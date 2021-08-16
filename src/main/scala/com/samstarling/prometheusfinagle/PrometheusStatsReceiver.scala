@@ -49,23 +49,24 @@ class PrometheusStatsReceiver(registry: CollectorRegistry,
 
   override def repr: AnyRef = this
 
-  override def counter(schema: CounterSchema): Counter = {
-    val (metricName, labels) = extractLabels(schema.metricBuilder.name)
+  override def counter(builder: MetricBuilder): Counter = {
+    val (metricName, labels) = extractLabels(builder.name)
     val counter = this.synchronized {
       counters
         .getOrElseUpdate(metricName, newCounter(metricName, labels.keys.toSeq))
         .labels(labels.values.toSeq: _*)
     }
-
     new Counter {
       override def incr(delta: Long): Unit = {
         counter.inc(delta)
       }
+
+      override def metadata: Metadata = NoMetadata
     }
   }
 
-  override def stat(schema: HistogramSchema): Stat = {
-    val (metricName, labels) = extractLabels(schema.metricBuilder.name)
+  override def stat(builder: MetricBuilder): Stat = {
+    val (metricName, labels) = extractLabels(builder.name)
     val summary = this.synchronized {
       summaries
         .getOrElseUpdate(metricName, newSummary(metricName, labels.keys.toSeq))
@@ -76,12 +77,14 @@ class PrometheusStatsReceiver(registry: CollectorRegistry,
       override def add(value: Float): Unit = {
         summary.observe(value)
       }
+
+      override def metadata: Metadata = NoMetadata
     }
   }
 
-  override def addGauge(schema: GaugeSchema)(
+  override def addGauge(builder: MetricBuilder)(
       f: => Float): Gauge = {
-    val (metricName, labels) = extractLabels(schema.metricBuilder.name)
+    val (metricName, labels) = extractLabels(builder.name)
     val labelValues = labels.values.toSeq
 
     this.synchronized {
@@ -101,6 +104,8 @@ class PrometheusStatsReceiver(registry: CollectorRegistry,
     new Gauge {
       override def remove(): Unit =
         gaugeProviders.remove((metricName, labelValues))
+
+      override def metadata: Metadata = NoMetadata
     }
   }
 
