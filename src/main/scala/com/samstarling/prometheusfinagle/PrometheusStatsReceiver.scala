@@ -1,11 +1,11 @@
 package com.samstarling.prometheusfinagle
 
+import com.samstarling.prometheusfinagle.DefaultMetricPatterns.prometheusLabelForLabel
 import com.twitter.finagle.stats._
 import io.prometheus.client.{CollectorRegistry, Summary, Counter => PCounter, Gauge => PGauge}
 
 import scala.collection.concurrent.TrieMap
 import com.twitter.util._
-import com.twitter.finagle.util.DefaultTimer
 
 class PrometheusStatsReceiver(registry: CollectorRegistry,
                               namespace: String,
@@ -155,7 +155,10 @@ class PrometheusStatsReceiver(registry: CollectorRegistry,
       name: Seq[String]): (String, Map[String, String]) = {
     metricPattern.applyOrElse(
       name.map(_.replaceAll("[^\\w]", "_")),
-      (x: Seq[String]) => DefaultMetricPatterns.sanitizeName(x) -> Map.empty)
+      (x: Seq[String]) => {
+        val label = DefaultMetricPatterns.sanitizeName(x)
+        s"default_$label" -> Map(prometheusLabelForLabel ->  label)
+      })
   }
 }
 
